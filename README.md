@@ -37,6 +37,7 @@ OptimizationAlgorithmWithHessian就是这个对应的派生类，但由于没有
 Solver的主要派生类是BlockSolver类。这是一个模板类，其模板参数是另一个模板类BlockSolverTraits。这是一个很常见的用法，BlockSolverTraits的两个模板参数分别是位姿的维度_poseDim和路标点的维度_landmarkDim。
 
 1. buildStructure函数
+
 中间层的优化算法调用线性求解器时，如果是第一次迭代，那么要调用buildStructure来构建Hx=b这样一个线性系统。通过这个函数我们可以发现，g2o默认边缘化掉landmark，且它们的顺序（即id）在机器人位姿之后，所以前面必须初始化为PoseMatrixType。buildStructure通过遍历多次图来构建这个线性问题：
 
 2. buildSystem函数
