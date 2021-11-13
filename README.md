@@ -44,8 +44,6 @@ Solver的主要派生类是BlockSolver类。这是一个模板类，其模板参
 
 buildStructure只有在还没开始迭代的时候先调用一次。然后，每次迭代求解之前，都需要调用buildSystem函数来初始化。
 
-因为通过buildStructure函数，整个系统的H矩阵的结构我们已经构建好了。现在，经过之前的迭代求解，观测量的值发生了变化（或者没经过求解，但也要把初始化的值添加到构建好的结构里），因此要对整个系统（的值）进行更新。
-
 先遍历所有节点，对每个结点，清空之前的H和b（clearQuadraticForm函数），并且清空_Hpp矩阵。如果要进行舒尔补，还要清空_Hll和_Hpl矩阵。然后遍历所有边，重新进行线性化操作（lineaizeOplus函数）并构建H和b（constructQuadraticForm函数）。此时，大的H矩阵已经完成更新，还需要遍历所有节点来更新b向量（因为BaseVertex中，_hessian是Eigen::Map类型，而_b是Eigen::Matrix类型，因此虽然没有显式地更新系统的H矩阵，但在遍历边时，更新的H就已经更新在_Hpp等变量里面了）。
 
 
@@ -53,16 +51,6 @@ buildStructure只有在还没开始迭代的时候先调用一次。然后，每
 
 最后，我们就可以调用solve函数来求解了。如果我们没有进行schur补操作，那么没啥说的，直接调用_linearSolver的solve函数来求解Hx=b就可以了（调用_linearSolver）。
 
-如果我们要进行schur补操作，那就稍微有点复杂了，但也只是有点，整体也是按照舒尔补的公式来进行schur补进行求解。由于路标点对应的H矩阵显然是个稀疏的block diagonal matrix，因此我们遍历路标点，单独对其_Hll矩阵进行求逆（即单独求一个3*3矩阵的逆）。然后按照公式进行schur补相关矩阵的计算。这里先求出的机器人位姿，因此先计算其相关的矩阵（_Hschur, _bschur等）；然后调用_linearSolver，输入相关矩阵进行求解。如果机器人位姿求解成功了，就按照公式将之反代回schur补公式中，对路标点的位置进行求解。
-
-4. 其他函数
-
-要么没怎么用到，如updateStructure函数，这是外部传入一组节点和边，以此来构建大的H矩阵。这个函数不支持schur补，因此比buildStructure函数简单多了，主要就是完成buildStruct函数的那三个步骤。而且由于不进行舒尔补，所以步骤1是不需要的，就当所有节点都是机器人位置，然后挨个放进去就可以。
-要么很简单。如setLambda和restoreDiagonal这一对函数，就是将H矩阵备份，然后在主对角元素上加上lambda或者从备份中恢复原来的H矩阵。init函数就是清空各个矩阵块，然后调用_linearSolver的init函数即可。
-最后，线性求解器LinearSolver是一个模板虚基类。它是solvers文件夹下各个线性求解器的interface. 它还有一个派生类LinearSolverCCS，主要是利用迭代的方式（如PCG）来对线性系统进行求解。
-
-这里就不详细介绍了。比较简单的求解器有LinearSolverDense，大概介绍下让大家对这个先行求解器有所了解。
-
-顾名思义，LinearSolverDense是用来求解一个稠密矩阵的，比如舒尔补之后的机器人位姿矩阵。的solve函数中，先准备好一个矩阵_H（传给_linearSolver的海塞矩阵H在solve函数的形参名称为A，可以认为是H的CRS存储形式（一种矩阵存储方式），所以这里面是在求Ax=b的解），这里假设传入的A矩阵是一个稀疏矩阵，并且按照CRS的方式存储。因此需要将A矩阵恢复成一个真正的ｍ＊ｎ大小的矩阵，存放在_H中。最后，调用Eigen中的Cholesky分解来求解Ax=b，并返回最后的结果。
+最后，线性求解器LinearSolver是一个模板虚基类。它是solvers文件夹下各个线性求解器的interface. 它还有一个派生类LinearSolverCCS，主要是利用迭代的方式（如PCG）来对线性系统进行求解。这里就不详细介绍了。比较简单的求解器有LinearSolverDense，大概介绍下让大家对这个先行求解器有所了解。顾名思义，LinearSolverDense是用来求解一个稠密矩阵的，比如舒尔补之后的机器人位姿矩阵。的solve函数中，先准备好一个矩阵_H（传给_linearSolver的海塞矩阵H在solve函数的形参名称为A，可以认为是H的CRS存储形式（一种矩阵存储方式），所以这里面是在求Ax=b的解），这里假设传入的A矩阵是一个稀疏矩阵，并且按照CRS的方式存储。因此需要将A矩阵恢复成一个真正的ｍ＊ｎ大小的矩阵，存放在_H中。最后，调用Eigen中的Cholesky分解来求解Ax=b，并返回最后的结果。
 
 
